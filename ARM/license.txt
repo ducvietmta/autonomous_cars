@@ -1,0 +1,11 @@
+/* -----------------------------------------------------------------------------
+
+stripEffect and WS2812 driver
+
+Copyright (C) 2015  Fabio Angeletti - fabio.angeletti89@gmail.com
+
+CC-BY-SA-NC
+
+I'm not the owner of the whole code
+
+------------------------------------------------------------------------------*/
