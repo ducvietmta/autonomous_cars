@@ -1,0 +1,1 @@
+/usr/bin/c++    -fopenmp -O3 -DNDEBUG   CMakeFiles/test-uart.dir/test_uart.cpp.o  -o ../../bin/Release/test-uart  -L/home/ubuntu/Downloads/2-Linux/OpenNI-Linux-Arm-2.3/Redist  -L/home/ubuntu/Lane_detector/bin/Release -rdynamic ../../bin/Release/libuart.a -Wl,-rpath,/home/ubuntu/Downloads/2-Linux/OpenNI-Linux-Arm-2.3/Redist:/home/ubuntu/Lane_detector/bin/Release 

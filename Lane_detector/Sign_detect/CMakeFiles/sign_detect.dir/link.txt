@@ -1,0 +1,2 @@
+/usr/bin/ar cq ../bin/Release/libsign_detect.a  CMakeFiles/sign_detect.dir/api_stop_sign_detection.cpp.o
+/usr/bin/ranlib ../bin/Release/libsign_detect.a

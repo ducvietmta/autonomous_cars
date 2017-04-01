@@ -1,0 +1,2 @@
+/home/ubuntu/Lane_detector/peripheral_driver/uart/CMakeFiles/uart.dir
+/home/ubuntu/Lane_detector/peripheral_driver/uart/CMakeFiles/test-uart.dir

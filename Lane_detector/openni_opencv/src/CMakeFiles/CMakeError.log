@@ -1,0 +1,51 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_884b2/fast"
+/usr/bin/make -f CMakeFiles/cmTC_884b2.dir/build.make CMakeFiles/cmTC_884b2.dir/build
+make[1]: Entering directory `/home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_884b2.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -fPIC    -o CMakeFiles/cmTC_884b2.dir/CheckSymbolExists.c.o   -c /home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_884b2
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_884b2.dir/link.txt --verbose=1
+/usr/bin/cc  -fPIC     CMakeFiles/cmTC_884b2.dir/CheckSymbolExists.c.o  -o cmTC_884b2 -rdynamic 
+CMakeFiles/cmTC_884b2.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x2c): undefined reference to `pthread_create'
+make[1]: Leaving directory `/home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp'
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_884b2] Error 1
+make: *** [cmTC_884b2/fast] Error 2
+
+File /home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_84b61/fast"
+/usr/bin/make -f CMakeFiles/cmTC_84b61.dir/build.make CMakeFiles/cmTC_84b61.dir/build
+make[1]: Entering directory `/home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_84b61.dir/CheckFunctionExists.c.o
+/usr/bin/cc    -fPIC -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_84b61.dir/CheckFunctionExists.c.o   -c /usr/local/share/cmake-3.4/Modules/CheckFunctionExists.c
+Linking C executable cmTC_84b61
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_84b61.dir/link.txt --verbose=1
+/usr/bin/cc  -fPIC -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_84b61.dir/CheckFunctionExists.c.o  -o cmTC_84b61 -rdynamic -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+make[1]: Leaving directory `/home/ubuntu/dev/openni_opencv/src/CMakeFiles/CMakeTmp'
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_84b61] Error 1
+make: *** [cmTC_84b61/fast] Error 2
+
+

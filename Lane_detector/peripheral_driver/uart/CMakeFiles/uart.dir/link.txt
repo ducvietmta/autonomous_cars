@@ -1,0 +1,2 @@
+/usr/bin/ar cq ../../bin/Release/libuart.a  CMakeFiles/uart.dir/rs232.c.o CMakeFiles/uart.dir/api_uart.cpp.o
+/usr/bin/ranlib ../../bin/Release/libuart.a

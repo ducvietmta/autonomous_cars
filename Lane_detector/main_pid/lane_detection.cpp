@@ -1,0 +1,385 @@
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/photo/photo.hpp"
+#include "opencv2/core/core.hpp"
+#include "opencv/cvaux.h"
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <stdio.h>
+#include <OpenNI.h>
+#include "api_uart.h"
+#include "api_stop_sign_detection.h"
+
+#define SAMPLE_READ_WAIT_TIMEOUT 2000
+#define w  640  //VIDEO_FRAME_WIDTH  640
+#define h  480  //VIDEO_FRAME_HEIGHT 480
+
+using namespace std;
+using namespace cv;
+using namespace openni;
+
+Mat depth_img(h, w, CV_16U);
+Mat depth_img_8u;
+Mat color_img(h, w, CV_8UC3);
+Mat imgBin, imgGray, imgGauss, imgCanny, gauss;;
+
+DepthPixel* depth_img_data;
+RGB888Pixel* color_img_data;
+VideoWriter depth_videoWriter;
+VideoWriter bgr_videoWriter;
+DepthPixel* pDepth;
+bool is_save_file = true;
+bool stop = false;
+int max_e, Mid=50, Max;
+float error, old_error,delta, Kp=0.2,Kd=0.1,Ki=0.2;
+int cport_nr,error_sum,Udk,trai,trai_temp,phai,phai_temp, temp;
+char buf_send[BUFF_SIZE];
+void DetectLanewithHought(vector<cv::Vec4i> lines, Mat& colorImg, Mat& result)
+{
+	std::vector<std::vector<std::vector<cv::Point> > > lineSegmentsClusters;
+
+	vector<cv::Point> aux;
+	vector<vector<cv::Point> > lineSegments;
+	cv::line(result, Point(0,0), Point(0,120), Scalar(255, 0, 0, 255), 2);
+	cv::line(result, Point(w,0), Point(w,120), Scalar(255, 0, 0, 255), 2);
+	for (size_t i = 0; i<lines.size(); i++)
+	{
+		cv::Point pt1, pt2;
+		pt1.x = lines[i][0];
+		pt1.y = lines[i][1];
+		pt2.x = lines[i][2];
+		pt2.y = lines[i][3];
+
+		double X = (double)(pt2.x - pt1.x);
+		double Y = (double)(pt2.y - pt1.y);
+
+		float  angle = atan2(Y, X) * 180 / CV_PI;
+		float delta = abs(angle);
+		int px = (pt1.x + pt2.x) / 2;		//// X-Center of line
+		int py = (pt1.y + pt2.y) / 2;		//// Y-Center of line
+		if ((px>colorImg.cols / 2) && Y>0 && angle>20 && angle<85)
+			{
+				aux.clear();
+				aux.push_back(pt1);
+				aux.push_back(pt2);
+				lineSegments.push_back(aux);
+			}
+		if ((px<colorImg.cols / 2) && Y<0 && angle>-85 && angle<-20)
+			{
+				aux.clear();
+				aux.push_back(pt1);
+				aux.push_back(pt2);
+				lineSegments.push_back(aux);
+			}
+	}
+	for (int i = 0; i < lineSegments.size(); i++)
+	{
+		vector<cv::Point> line = lineSegments.at(i);
+		cv::Point pt1 = line.at(0);
+		cv::Point pt2 = line.at(1);
+		cv::line(result, pt1, pt2, Scalar(255, 0, 0, 255), 2);
+	}
+	
+}
+int PID_Controller(float& error)
+{
+	delta= error-old_error;
+	old_error= error;
+	error_sum=error_sum+error;
+	if (error_sum<-max_e) error_sum=-max_e;
+	if (error_sum>max_e) error_sum=max_e;
+	Udk= Kp*error+Ki*error_sum+Kd*delta;
+	if(Udk<-50)Udk=-50;
+	if(Udk>50)Udk=50;
+	trai=(int)Mid+Udk;
+	phai=(int)Mid-Udk;
+	if (trai>=50)trai=50;
+	if (trai<10)trai=10;
+	if (phai>=50)phai=50;
+	if (phai<10)phai=10;
+	temp++;
+	if((temp%3)==0)
+		{
+		if(trai!=trai_temp||phai!=phai_temp)
+			{
+				sprintf(buf_send, "%d%d",phai,trai);
+				printf("%d%d\n",phai,trai);
+				api_uart_write(cport_nr, buf_send);
+			}
+		trai_temp=trai;
+		phai_temp=phai;
+		}
+
+}
+
+int getkey()
+{
+    int character;
+    struct termios orig_term_attr;
+    struct termios new_term_attr;
+
+    /* set the terminal to raw mode */
+    tcgetattr(fileno(stdin), &orig_term_attr);
+    memcpy(&new_term_attr, &orig_term_attr, sizeof(struct termios));
+    new_term_attr.c_lflag &= ~(ECHO|ICANON);
+    new_term_attr.c_cc[VTIME] = 0;
+    new_term_attr.c_cc[VMIN] = 0;
+    tcsetattr(fileno(stdin), TCSANOW, &new_term_attr);
+
+    /* read a character from the stdin stream without blocking */
+    /*   returns EOF (-1) if no character is available */
+    character = fgetc(stdin);
+
+    /* restore the original terminal attributes */
+    tcsetattr(fileno(stdin), TCSANOW, &orig_term_attr);
+
+    return character;
+}
+int main()
+{
+	cport_nr = api_uart_open();
+	if (cport_nr == -1) 
+	{
+		cerr << "Error: Canot Open ComPort";
+		return -1;
+	}
+	sprintf(buf_send, "ssss");
+	api_uart_write(cport_nr, buf_send);
+	int erosion_size = 4;
+	cv::Mat element = cv::getStructuringElement(MORPH_RECT,                            
+		Size(2 * erosion_size + 1, 2 * erosion_size + 1),                              
+		Point(erosion_size, erosion_size));                                            
+	CvMemStorage storage = CvMemStorage();                                             
+	vector<cv::Vec4i> lines;                                                           
+	vector<vector<cv::Point> > lineSegments; 
+	
+    Status rc = OpenNI::initialize();
+    if (rc != STATUS_OK)
+    {
+        printf("Initialize failed\n%s\n", OpenNI::getExtendedError());
+        return 1;
+    }
+    Device device;
+    rc = device.open(ANY_DEVICE);
+    if (rc != STATUS_OK)
+    {
+        printf("Couldn't open device\n%s\n", OpenNI::getExtendedError());
+        return 2;
+    }
+
+    VideoStream depth, color;
+    if (device.getSensorInfo(SENSOR_DEPTH) != NULL)
+    {
+        rc = depth.create(device, SENSOR_DEPTH);
+        
+        if (rc == STATUS_OK)
+        {
+            VideoMode depth_mode = depth.getVideoMode();
+            depth_mode.setFps(30);
+            depth_mode.setResolution(w, h);
+            depth_mode.setPixelFormat(PIXEL_FORMAT_DEPTH_100_UM);
+            depth.setVideoMode(depth_mode);
+            rc = depth.start();
+            if (rc != STATUS_OK)
+            {
+                printf("Couldn't start the color stream\n%s\n", OpenNI::getExtendedError());
+            }
+        }
+        else
+        {
+            printf("Couldn't create depth stream\n%s\n", OpenNI::getExtendedError());
+        }
+    }
+
+    if (device.getSensorInfo(SENSOR_COLOR) != NULL)
+    {
+        rc = color.create(device, SENSOR_COLOR);
+        if (rc == STATUS_OK)
+        {
+            VideoMode color_mode = color.getVideoMode();
+            color_mode.setFps(30);
+            color_mode.setResolution(w, h);
+            color_mode.setPixelFormat(PIXEL_FORMAT_RGB888);
+            color.setVideoMode(color_mode);
+
+            rc = color.start();
+            if (rc != STATUS_OK)
+            {
+                printf("Couldn't start the color stream\n%s\n", OpenNI::getExtendedError());
+            }
+        }
+        else
+        {
+            printf("Couldn't create color stream\n%s\n", OpenNI::getExtendedError());
+        }
+    }
+
+    VideoFrameRef frame_depth;
+    VideoFrameRef frame_color;
+
+    VideoStream* streams[] = {&depth, &color};
+
+    int codec = CV_FOURCC('D','I','V', 'X');
+    Size output_size(w, h);
+
+    //string depth_filename = "depth.avi";
+    string bgr_filename = "bgr.avi";
+
+
+    char key = 0;
+
+    bool start = false;
+    bool stop = false;
+
+    if(is_save_file)
+    {
+    // depth_videoWriter.open(depth_filename, codec, 24, output_size, false);
+	bgr_videoWriter.open(bgr_filename, codec, 24, output_size, true);
+    }
+
+	cout<< " Press s to start and f to stop"<< endl<< flush;
+	
+    while (true)
+    {
+	key = getkey();
+        if( key == 's')
+            start = true;
+        if( key == 'f'||stop == true)
+        {
+			usleep(300000);
+       	    sprintf(buf_send, "ffff");
+            printf("stop");
+		    api_uart_write(cport_nr, buf_send);
+            stop = true;
+        }
+        if( stop ) break;
+        if( start )
+        {       
+		    int readyStream = -1;
+		    rc = OpenNI::waitForAnyStream(streams, 2, &readyStream, SAMPLE_READ_WAIT_TIMEOUT);
+		    if (rc != STATUS_OK)
+		    {
+		        printf("Wait failed! (timeout is %d ms)\n%s\n", SAMPLE_READ_WAIT_TIMEOUT, OpenNI::getExtendedError());
+		        break;
+		    }
+		    depth.readFrame(&frame_depth);
+		    color.readFrame(&frame_color);	
+        	depth_img_data = (DepthPixel*)frame_depth.getData();
+/*//////////////////////////////////////////////////////////////////////////
+/       memcpy(depth_img.data, depth_img_data, h*w*sizeof(DepthPixel));    /
+/       normalize(depth_img, depth_img_8u, 255, 0, NORM_MINMAX);           /
+/       depth_img_8u.convertTo(depth_img_8u, CV_8U);	                   /
+/		if ((is_save_file)&&(!depth_img_8u.empty()))		   /
+/          depth_videoWriter.write(depth_img_8u);			   / 
+//////////////////////////////////////////////////////////////////////////*/
+
+      		color_img_data = (RGB888Pixel*)frame_color.getData();
+    	    memcpy(color_img.data, color_img_data , h*w*sizeof(RGB888Pixel));
+   			cvtColor(color_img, color_img, COLOR_RGB2BGR);
+			if ((is_save_file)&&(!color_img.empty()))bgr_videoWriter.write(color_img);
+//////////////////////////////////////////////
+			Rect roi1(0,   color_img.rows / 4, color_img.cols, 2*color_img.rows / 4); //c?t ?nh
+			Mat imgROI1 = color_img(roi1);
+			Mat binary = stopsign::redToBinary(imgROI1);
+			vector<Rect> boxes;
+			stopsign::findComponents(binary, boxes);
+			for (int index = 0; index < boxes.size(); index++)
+			{
+				rectangle(imgROI1, boxes[index], Scalar(255,0,0), 1, 8, 0);
+				int x = boxes[index].x;
+				int y = boxes[index].y;
+				int width = boxes[index].width;
+				int height = boxes[index].height;
+				long p1= (640*(y+(height/2)+120)+(x+(width/2)));
+				long p2= (640*(y+(height/2)+120)+(x+(width/3)));
+				long p3= (640*(y+(height/3)+120)+(x+(width/2)));
+				if((depth_img_data [p1]>=10000&&depth_img_data [p1]<=10500)||(depth_img_data [p2]>=10000&&depth_img_data [p2]<=10500)||(depth_img_data [p3]>=10000&&depth_img_data [p3]<=10500))	
+				{
+					stop = true;
+					printf("[%08llu] %8d\n", (long long)frame_depth.getTimestamp(),
+					depth_img_data[p1]);
+					printf("[%08llu] %8d\n", (long long)frame_depth.getTimestamp(),
+					depth_img_data[p2]);
+					printf("[%08llu] %8d\n", (long long)frame_depth.getTimestamp(),
+					depth_img_data[p3]);
+				}
+			}
+	///////////////////////////////////////////////////	
+			flip(color_img, color_img, 1);	
+			cvtColor(color_img, imgGray, CV_RGB2GRAY);
+			vector<string> codes;
+			Rect roi(0, 2* imgGray.rows / 4, imgGray.cols, imgGray.rows/4 );
+			Mat imgROI = imgGray(roi);
+			int widthSrc = imgROI.cols;
+			int heightSrc = imgROI.rows;
+			GaussianBlur(imgROI, gauss, Size(5, 5), 0, 0, BORDER_DEFAULT);
+			cv::Canny(gauss, imgCanny, 100, 250, 3);
+			cv::dilate(imgCanny, imgCanny, element);
+			threshold(imgCanny, imgBin, 20, 255, THRESH_BINARY);
+			Mat result(imgBin.rows, imgBin.cols, CV_8U, Scalar(0));
+			HoughLinesP(imgBin, lines, 2, CV_PI / 90, 100, 10, 30);
+			DetectLanewithHought(lines, color_img, result);
+			vector<Point> pointListLeft, pointListRight;
+			for (int y = 0; y < heightSrc; y++)
+			{
+				for (int x = widthSrc / 2; x >= 0; x--)
+				{
+					if (result.at<uchar>(y, x) == 255 )
+					{
+						pointListLeft.push_back(Point(y, x));
+						break;
+					}
+				}
+			}
+			for (int y = 0; y < heightSrc; y++)
+			{
+				for (int x = widthSrc / 2; x < widthSrc; x++)
+				{
+					if (result.at<uchar>(y, x) == 255 )
+					{
+						pointListRight.push_back(Point(y, x));
+						break;
+					}
+				}
+			}
+			int xL = 0, yL = 0, xR = 0, yR = 0;
+			int xTam = 0, yTam = 0;
+				for (int i = 0; i < pointListLeft.size(); i++)
+				{
+					xL = xL + pointListLeft.at(i).y;
+					yL = yL + pointListLeft.at(i).x;
+				}
+				for (int i = 0; i < pointListRight.size(); i++)
+				{
+					xR = xR + pointListRight.at(i).y;
+					yR = yR + pointListRight.at(i).x;
+				}
+				xTam = (xL / pointListLeft.size() + xR / pointListRight.size()) / 2;
+				yTam = (yL / pointListLeft.size() + yR / pointListRight.size()) / 2;
+				yTam = yTam + h * 3 / 4;
+				float error=(float)(widthSrc/2-xTam);
+				PID_Controller(error);
+				char key = waitKey(1);
+				circle(color_img, Point(xTam, yTam), 2, Scalar(255, 255, 0), 3);
+				imshow("line detected ", result);
+				imshow("point detected ", color_img);
+				if( key == 27 ) break;
+		}
+    }
+
+if(is_save_file )
+    {
+ 	   // depth_videoWriter.release();
+		bgr_videoWriter.release();
+    }
+
+    depth.stop();
+    color.stop();
+    depth.destroy();
+    color.destroy();
+    device.close();
+    OpenNI::shutdown();
+
+    return 0;
+}

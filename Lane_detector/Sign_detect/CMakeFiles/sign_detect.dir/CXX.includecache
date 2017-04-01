@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/ubuntu/Lane_detector/Sign_detect/api_stop_sign_detection.cpp
+api_stop_sign_detection.h
+/home/ubuntu/Lane_detector/Sign_detect/api_stop_sign_detection.h
+
+/home/ubuntu/Lane_detector/Sign_detect/api_stop_sign_detection.h
+opencv2/opencv.hpp
+/home/ubuntu/Lane_detector/Sign_detect/opencv2/opencv.hpp
+cstdio
+-
+cmath
+-
+queue
+-
+vector
+-
+

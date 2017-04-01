@@ -94,7 +94,7 @@ int PID_Controler_left()
     
     Udk_trai = Kp_trai*error_trai + Ki_trai*error_sum_trai + Kd_trai*delta;  //Tin hieu dieu khien
 
-    // Giam sat gia tri dieu khien ko duoc vuot qua ngwong
+    // Giam sat gia tri dieu khien ko duoc vuot qua nguong
     if (Udk_trai <0) Udk_trai = -Udk_trai;
     if (Udk_trai > 1000) Udk_trai = 1000;
     
@@ -122,7 +122,7 @@ int PID_Controler_left()
     
     Udk_phai = Kp_phai*error_phai + Ki_phai*error_sum_phai + Kd_phai*delta;  //Tin hieu dieu khien
 
-    // Giam sat gia tri dieu khien ko duoc vuot qua ngwong
+    // Giam sat gia tri dieu khien ko duoc vuot qua nguong
     if (Udk_phai <0) Udk_phai = -Udk_phai;
     if (Udk_phai > 1000) Udk_phai = 1000;
     
@@ -185,7 +185,6 @@ int main(void)
 		HAL_UART_Receive_IT(&huart2,Rx_Buffer , 4);
 		tocdo_dat_trai=(Rx_Buffer[0]-0x30)*10+(Rx_Buffer[1]-0x30);
 		tocdo_dat_phai=(Rx_Buffer[2]-0x30)*10+(Rx_Buffer[3]-0x30);
-	//	printf("%s",Rx_Buffer);
 		if(Rx_Buffer[0]=='f')
 			{
 				TIM21->CCR1=0;
@@ -194,8 +193,8 @@ int main(void)
 				}
 		Udk_trai=PID_Controler_left();	
 		Udk_phai=PID_Controler_right();	
-		printf("trai: %f \r\n",tocdo_trai);
-		printf("phai: %f \r\n",tocdo_phai);
+	  //printf("trai: %f \r\n",tocdo_trai);
+		//printf("phai: %f \r\n",tocdo_phai);
 		HAL_Delay(100);
 		if(tocdo_dat_trai<30)
 			{

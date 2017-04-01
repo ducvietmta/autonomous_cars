@@ -1,0 +1,53 @@
+cmake_minimum_required(VERSION 2.8)
+
+project( CarControl-0.3 )
+
+
+#set ("OpenCV_DIR" "/home/viet/opencv-3.1.0/Release")
+find_package( OpenCV REQUIRED )
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
+               STRINGS "Debug" "Release")
+endif()
+
+set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
+
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
+set( OPENNI2_INCLUDE /home/ubuntu/Downloads/2-Linux/OpenNI-Linux-Arm-2.3/Include)
+set( OPENNI2_REDIST  /home/ubuntu/Downloads/2-Linux/OpenNI-Linux-Arm-2.3/Redist)
+include_directories( ${OPENNI2_INCLUDE} 
+                    )
+
+link_directories ( ${OPENNI2_REDIST} )
+
+include_directories(
+      ${OpenCV_INCLUDE_DIRS}
+      ${CMAKE_CURRENT_SOURCE_DIR}/peripheral_driver/uart
+)
+
+link_directories(
+                  ${LIBRARY_OUTPUT_PATH}
+)
+find_package(OpenMP)
+if(OPENMP_FOUND)
+    message("Find OpenMP: ${OpenMP_C_FLAGS}, ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+
+add_subdirectory(peripheral_driver)
+
+set( exec_name1  lane_detect)
+set( source_files1
+    main_pid/lane_detection.cpp
+)
+#SET(VC_LIBS ${OpenCV_LIBS})
+add_executable( ${exec_name1} ${source_files1} )
+target_link_libraries( ${exec_name1} ${OpenCV_LIBS} uart OpenNI2)
+#target_link_libraries( ${lib_name} ${OpenCV_LIBS})
+

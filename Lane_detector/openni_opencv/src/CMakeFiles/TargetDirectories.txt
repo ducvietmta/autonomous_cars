@@ -1,0 +1,1 @@
+/home/ubuntu/Lane_detector/carControl_astra/openni_opencv/src/CMakeFiles/test-openni-opencv.dir
